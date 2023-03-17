@@ -4,7 +4,6 @@ import { Chat } from "../components/Chat";
 
 function Home() {
   const session = useSession();
-  console.log("session: ", session);
   const supabase = useSupabaseClient();
   return (
     <Page className="flex flex-col gap-12">

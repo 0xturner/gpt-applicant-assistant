@@ -5,20 +5,21 @@ import type { LayoutProps } from "@vercel/examples-ui/layout";
 import { getLayout } from "@vercel/examples-ui";
 
 import "@vercel/examples-ui/globals.css";
+import { useState } from "react";
+import { createBrowserSupabaseClient } from "@supabase/auth-helpers-nextjs";
+import { SessionContextProvider } from "@supabase/auth-helpers-react";
 
 function App({ Component, pageProps }: AppProps) {
-  const Layout = getLayout<LayoutProps>(Component);
+  const [supabase] = useState(() => createBrowserSupabaseClient());
 
   return (
-    // <Layout
-    //   title="ai-chatgpt"
-    //   path="solutions/ai-chatgpt"
-    //   description="ai-chatgpt"
-    // >
-    <>
+    <SessionContextProvider
+      supabaseClient={supabase}
+      initialSession={pageProps.initialSession}
+    >
       <Component {...pageProps} />
       <Analytics />
-    </>
+    </SessionContextProvider>
   );
 }
 

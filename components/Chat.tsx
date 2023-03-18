@@ -16,12 +16,12 @@ export const initialMessages: ChatGPTMessage[] = [
 ];
 
 const InputMessage = ({ input, setInput, sendMessage }: any) => (
-  <div className="mt-6 flex clear-both">
+  <div className="clear-both mt-6 flex">
     <textarea
       rows={4}
       aria-label="chat input"
       required
-      className="min-w-0 flex-auto appearance-none rounded-md border border-zinc-900/10 bg-white px-3 py-[calc(theme(spacing.2)-1px)] shadow-md shadow-zinc-800/5 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-500/10 sm:text-sm resize"
+      className="min-w-0 flex-auto resize appearance-none rounded-md border border-zinc-900/10 bg-white px-3 py-[calc(theme(spacing.2)-1px)] shadow-md shadow-zinc-800/5 placeholder:text-zinc-400 focus:border-teal-500 focus:outline-none focus:ring-4 focus:ring-teal-500/10 sm:text-sm"
       value={input}
       onKeyDown={(e) => {
         if (e.key === "Enter") {
@@ -59,7 +59,10 @@ const useRateLimit = () => {
     }
   }, [remaining, setCookie]);
 
-  return { remaining, setRemaining };
+  return {
+    remaining,
+    setRemaining,
+  };
 };
 
 export function Chat() {
@@ -86,8 +89,14 @@ export function Chat() {
     setLoading(true);
     const newMessages = [
       // ...messages,
-      { role: "user", content: resume } as ChatGPTMessage,
-      { role: "user", content: jobDescription } as ChatGPTMessage,
+      {
+        role: "user",
+        content: resume,
+      } as ChatGPTMessage,
+      {
+        role: "user",
+        content: jobDescription,
+      } as ChatGPTMessage,
     ];
     // setMessages(newMessages);
     const last10messages = newMessages.slice(-10); // remember last 10 messages
@@ -150,7 +159,7 @@ export function Chat() {
         <ChatLine key={index} role={role} content={content} />
       ))}
 
-      <span className="mx-auto flex flex-grow text-gray-600 clear-both">
+      <span className="clear-both mx-auto flex flex-grow text-gray-600">
         Resume:
       </span>
       <InputMessage
@@ -159,7 +168,7 @@ export function Chat() {
         sendMessage={sendMessage}
       />
       <br />
-      <span className="mx-auto flex flex-grow text-gray-600 clear-both">
+      <span className="clear-both mx-auto flex flex-grow text-gray-600">
         Job Description:
       </span>
       <InputMessage

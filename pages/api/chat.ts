@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { ipRateLimit } from "@lib/ip-rate-limit";
 
 import { Configuration, OpenAIApi } from "openai";
 import fetchAdapter from "@vespaiach/axios-fetch-adapter";
@@ -20,12 +21,19 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 const handler = async (req: NextRequest): Promise<Response> => {
+  const res = await ipRateLimit(req);
+  // If the status is not 200 then it has been rate limited.
+  if (res.status !== 200) return res;
+
   const body = await req.json();
 
   if (!ACTIVE) {
-    return NextResponse.json({
-      text: "dummy response",
-    });
+    return NextResponse.json(
+      {
+        text: "dummy response",
+      },
+      { headers: res.headers }
+    );
   }
 
   const completion = await openai.createChatCompletion(
@@ -43,9 +51,12 @@ const handler = async (req: NextRequest): Promise<Response> => {
     }
   );
 
-  return NextResponse.json({
-    text: completion.data.choices[0].message?.content,
-  });
+  return NextResponse.json(
+    {
+      text: completion.data.choices[0].message?.content,
+    },
+    { headers: res.headers }
+  );
 };
 
 export default handler;

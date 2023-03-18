@@ -6,11 +6,19 @@ export default function getIP(request: Request) {
   return xff ? xff.split(",")[0] : "127.0.0.1";
 }
 
+const LIMIT = process.env.IP_RATE_LIMIT
+  ? parseInt(process.env.IP_RATE_LIMIT)
+  : 10;
+
+const TIMEFRAME = process.env.IP_RATE_TIMEFRAME
+  ? parseInt(process.env.IP_RATE_TIMEFRAME)
+  : 60 * 60 * 24; // 1 day
+
 export const ipRateLimit = initRateLimit((request) => ({
   id: `ip:${getIP(request)}`,
   count: increment,
-  limit: 10,
-  timeframe: 60 * 60 * 24, // 1 day
+  limit: LIMIT,
+  timeframe: TIMEFRAME,
 }));
 
 const increment: CountFn = async ({ response, key, timeframe }) => {

@@ -3,7 +3,8 @@ import { Button } from "./Button";
 import { type ChatGPTMessage, ChatLine, LoadingChatLine } from "./ChatLine";
 import { useCookies } from "react-cookie";
 
-const COOKIE_NAME = "nextjs-example-ai-chat-gpt3";
+const USER_COOKIE_NAME = "gpt-applicant-assistant-user";
+const RATE_LIMIT_COOKIE_NAME = "rate-limit-remaining";
 
 // default first message to display in UI (not necessary to define the prompt)
 export const initialMessages: ChatGPTMessage[] = [
@@ -35,20 +36,46 @@ const InputMessage = ({ input, setInput, sendMessage }: any) => (
   </div>
 );
 
+// hook to manage rate limit remaining count. This doesn't do the actual rate limiting, it
+// just keeps track of the remaining count and updates it when a request is made
+const useRateLimit = () => {
+  const [cookies, setCookie] = useCookies([RATE_LIMIT_COOKIE_NAME]);
+
+  let remaining = !isNaN(parseInt(cookies[RATE_LIMIT_COOKIE_NAME]))
+    ? parseInt(cookies[RATE_LIMIT_COOKIE_NAME])
+    : undefined;
+
+  const setRemaining = (newCount: any) => {
+    setCookie(RATE_LIMIT_COOKIE_NAME, newCount);
+  };
+
+  useEffect(() => {
+    if (remaining === undefined) {
+      setCookie(RATE_LIMIT_COOKIE_NAME, 1000);
+    }
+  }, [remaining, setCookie]);
+
+  return { remaining, setRemaining };
+};
+
 export function Chat() {
   const [resume, setResume] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [answer, setAnswer] = useState("");
   const [loading, setLoading] = useState(false);
-  const [cookie, setCookie] = useCookies([COOKIE_NAME]);
+  const [cookies, setCookie] = useCookies([USER_COOKIE_NAME]);
+
+  const [hasMounted, setHasMounted] = useState(false);
+
+  const { remaining, setRemaining } = useRateLimit();
 
   useEffect(() => {
-    if (!cookie[COOKIE_NAME]) {
+    if (!cookies[USER_COOKIE_NAME]) {
       // generate a semi random short id
       const randomId = Math.random().toString(36).substring(7);
-      setCookie(COOKIE_NAME, randomId);
+      setCookie(USER_COOKIE_NAME, randomId);
     }
-  }, [cookie, setCookie]);
+  }, [cookies, setCookie]);
 
   // send message to API /api/chat endpoint
   const sendMessage = async (resume: string, jobDescription: string) => {
@@ -68,11 +95,11 @@ export function Chat() {
       },
       body: JSON.stringify({
         messages: last10messages,
-        user: cookie[COOKIE_NAME],
+        user: cookies[USER_COOKIE_NAME],
       }),
     });
 
-    console.log("Edge function returned.");
+    setRemaining(response.headers.get("x-ratelimit-remaining") || 0);
 
     if (!response.ok) {
       throw new Error(response.statusText);
@@ -96,7 +123,6 @@ export function Chat() {
       const chunkValue = decoder.decode(value);
 
       lastMessage = lastMessage + chunkValue;
-      console.log("lastMessage: ", JSON.parse(lastMessage));
 
       setAnswer(JSON.parse(lastMessage).answer);
 
@@ -109,8 +135,13 @@ export function Chat() {
     }
   };
 
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
+
   return (
     <div className="rounded-2xl border-zinc-100  lg:border lg:p-4">
+      <div>Remaining: {hasMounted ? remaining : "Loading..."}</div>
       {initialMessages.map(({ content, role }, index) => (
         <ChatLine key={index} role={role} content={content} />
       ))}

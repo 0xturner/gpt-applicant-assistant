@@ -1,10 +1,10 @@
-import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
+// import { useSession, useSupabaseClient } from "@supabase/auth-helpers-react";
 import { Layout, Text, Page } from "@vercel/examples-ui";
 import { Chat } from "../components/Chat";
 
 function Home() {
-  const session = useSession();
-  const supabase = useSupabaseClient();
+  // const session = useSession();
+  // const supabase = useSupabaseClient();
   return (
     <Page className="flex flex-col gap-12">
       <section className="flex flex-col gap-3">

@@ -12,7 +12,7 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 export const config = {
-  runtime: "edge",
+  runtime: "edge", // TODO should we even be using edge?
 };
 
 const configuration = new Configuration({

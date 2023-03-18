@@ -45,7 +45,11 @@ const useRateLimit = () => {
     ? parseInt(cookies[RATE_LIMIT_COOKIE_NAME])
     : undefined;
 
-  const setRemaining = (newCount: any) => {
+  const setRemaining = (newCount: string | null) => {
+    if (newCount === null) {
+      console.error("error reading rate limit remaining");
+      return;
+    }
     setCookie(RATE_LIMIT_COOKIE_NAME, newCount);
   };
 
@@ -99,7 +103,7 @@ export function Chat() {
       }),
     });
 
-    setRemaining(response.headers.get("x-ratelimit-remaining") || 0);
+    setRemaining(response.headers.get("x-ratelimit-remaining"));
 
     if (!response.ok) {
       throw new Error(response.statusText);

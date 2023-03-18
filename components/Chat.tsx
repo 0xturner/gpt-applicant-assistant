@@ -4,7 +4,7 @@ import { type ChatGPTMessage, ChatLine, LoadingChatLine } from "./ChatLine";
 import { useCookies } from "react-cookie";
 
 const USER_COOKIE_NAME = "gpt-applicant-assistant-user";
-const COUNTER_COOKIE_NAME = "rate-limit-remaining";
+const RATE_LIMIT_COOKIE_NAME = "rate-limit-remaining";
 
 // default first message to display in UI (not necessary to define the prompt)
 export const initialMessages: ChatGPTMessage[] = [
@@ -39,21 +39,21 @@ const InputMessage = ({ input, setInput, sendMessage }: any) => (
 // hook to manage rate limit remaining count. This doesn't do the actual rate limiting, it
 // just keeps track of the remaining count and updates it when a request is made
 const useRateLimit = () => {
-  const [cookies, setCookie] = useCookies([COUNTER_COOKIE_NAME]);
+  const [cookies, setCookie] = useCookies([RATE_LIMIT_COOKIE_NAME]);
 
-  let remaining = !isNaN(parseInt(cookies[COUNTER_COOKIE_NAME]))
-    ? parseInt(cookies[COUNTER_COOKIE_NAME])
+  let remaining = !isNaN(parseInt(cookies[RATE_LIMIT_COOKIE_NAME]))
+    ? parseInt(cookies[RATE_LIMIT_COOKIE_NAME])
     : undefined;
 
   const setRemaining = (newCount: any) => {
-    setCookie(COUNTER_COOKIE_NAME, newCount);
+    setCookie(RATE_LIMIT_COOKIE_NAME, newCount);
   };
 
   useEffect(() => {
     if (remaining === undefined) {
-      setCookie(COUNTER_COOKIE_NAME, 1000);
+      setCookie(RATE_LIMIT_COOKIE_NAME, 1000);
     }
-  }, [cookies, setCookie]);
+  }, [remaining, setCookie]);
 
   return { remaining, setRemaining };
 };

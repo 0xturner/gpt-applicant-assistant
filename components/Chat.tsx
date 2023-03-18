@@ -4,7 +4,7 @@ import { type ChatGPTMessage, ChatLine, LoadingChatLine } from "./ChatLine";
 import { useCookies } from "react-cookie";
 
 const USER_COOKIE_NAME = "gpt-applicant-assistant-user";
-const COUNTER_COOKIE_NAME = "gpt-applicant-assistant-counter";
+const COUNTER_COOKIE_NAME = "rate-limit-remaining";
 
 // default first message to display in UI (not necessary to define the prompt)
 export const initialMessages: ChatGPTMessage[] = [
@@ -36,25 +36,26 @@ const InputMessage = ({ input, setInput, sendMessage }: any) => (
   </div>
 );
 
-const useCounter = () => {
+// hook to manage rate limit remaining count. This doesn't do the actual rate limiting, it
+// just keeps track of the remaining count and updates it when a request is made
+const useRateLimit = () => {
   const [cookies, setCookie] = useCookies([COUNTER_COOKIE_NAME]);
 
-  let counter = !isNaN(parseInt(cookies[COUNTER_COOKIE_NAME]))
+  let remaining = !isNaN(parseInt(cookies[COUNTER_COOKIE_NAME]))
     ? parseInt(cookies[COUNTER_COOKIE_NAME])
     : undefined;
 
-  const incrementCounter = () => {
-    const newCount = counter !== undefined ? counter + 1 : 0;
+  const setRemaining = (newCount: any) => {
     setCookie(COUNTER_COOKIE_NAME, newCount);
   };
 
   useEffect(() => {
-    if (counter === undefined) {
-      setCookie(COUNTER_COOKIE_NAME, 0);
+    if (remaining === undefined) {
+      setCookie(COUNTER_COOKIE_NAME, 1000);
     }
   }, [cookies, setCookie]);
 
-  return { counter, incrementCounter };
+  return { remaining, setRemaining };
 };
 
 export function Chat() {
@@ -66,7 +67,7 @@ export function Chat() {
 
   const [hasMounted, setHasMounted] = useState(false);
 
-  const { counter, incrementCounter } = useCounter();
+  const { remaining, setRemaining } = useRateLimit();
 
   useEffect(() => {
     if (!cookies[USER_COOKIE_NAME]) {
@@ -98,7 +99,7 @@ export function Chat() {
       }),
     });
 
-    // console.log("Edge function returned.");
+    setRemaining(response.headers.get("x-ratelimit-remaining") || 0);
 
     if (!response.ok) {
       throw new Error(response.statusText);
@@ -122,11 +123,8 @@ export function Chat() {
       const chunkValue = decoder.decode(value);
 
       lastMessage = lastMessage + chunkValue;
-      // console.log("lastMessage: ", JSON.parse(lastMessage));
 
       setAnswer(JSON.parse(lastMessage).answer);
-
-      incrementCounter();
 
       // setMessages([
       //   ...messages,
@@ -143,7 +141,7 @@ export function Chat() {
 
   return (
     <div className="rounded-2xl border-zinc-100  lg:border lg:p-4">
-      <div>Counter: {hasMounted ? counter : "Loading..."}</div>
+      <div>Remaining: {hasMounted ? remaining : "Loading..."}</div>
       {initialMessages.map(({ content, role }, index) => (
         <ChatLine key={index} role={role} content={content} />
       ))}

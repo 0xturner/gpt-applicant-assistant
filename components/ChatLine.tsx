@@ -1,5 +1,5 @@
-import clsx from "clsx";
 import Balancer from "react-wrap-balancer";
+import clsx from "clsx";
 
 // wrap Balancer to remove type errors :( - @TODO - fix this ugly hack
 const BalancerWrapper = (props: any) => <Balancer {...props} />;

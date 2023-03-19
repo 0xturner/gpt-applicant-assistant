@@ -13,9 +13,9 @@ export async function mockStream() {
         await new Promise((resolve) =>
           setTimeout(() => {
             resolve("done");
-          }, 10)
+          }, 100)
         );
-        const queue = encoder.encode(chunk);
+        const queue = encoder.encode(chunk + " ");
         controller.enqueue(queue);
       }
 

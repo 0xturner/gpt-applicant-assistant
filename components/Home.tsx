@@ -15,10 +15,33 @@ const generateAnswer = async (resume: string, jobDescription: string) => {
     }),
   });
 
-  if (!response.ok) {
+  if (!response.ok || !response.body) {
     throw new Error("Network response was not ok");
   }
-  return response.json();
+
+  return response.body;
+};
+
+const useChatMutation = (resumeInput: string, jobDescription: string) => {
+  const [answer, setAnswer] = useState("");
+  const mutation = useMutation({
+    mutationFn: async () => {
+      setAnswer("");
+      const stream = await generateAnswer(resumeInput, jobDescription);
+      const reader = stream.getReader();
+      const decoder = new TextDecoder();
+
+      let done = false;
+      while (!done) {
+        const { value, done: doneReading } = await reader.read();
+        done = doneReading;
+        const chunkValue = decoder.decode(value);
+        setAnswer((prev) => prev + chunkValue);
+      }
+    },
+  });
+
+  return { ...mutation, data: answer };
 };
 
 export default function Home() {
@@ -26,16 +49,7 @@ export default function Home() {
   const [jobDescription, setJobDescription] = useState("");
   const [storedResume, setStoredResume] = useLocalStorage("resume", "");
 
-  // const submit = async (resume: string) => {
-  //   setStoredResume(resume);
-  //   window.alert(`Submitted: ${resume}`);
-  //   window.alert(`Submitted: ${jobDescription}`);
-  // };
-
-  const mutation = useMutation({
-    mutationFn: () => generateAnswer(resumeInput, jobDescription),
-  });
-  console.log("mutation: ", mutation.data);
+  const mutation = useChatMutation(resumeInput, jobDescription);
 
   // sync the resume in local storage with the resume input state
   useEffect(() => {
@@ -82,7 +96,7 @@ export default function Home() {
         </button>
       </div>
       <div className="mt-8 whitespace-pre-line">
-        {/* {mutation.data?.text && mutation.data?.text} */}
+        {mutation.data ? mutation.data : null}
       </div>
     </div>
   );

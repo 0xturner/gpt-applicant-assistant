@@ -1,16 +1,41 @@
 import useLocalStorage from "hooks/useLocalStorage";
 import { useEffect, useState } from "react";
 
+import { useMutation } from "@tanstack/react-query";
+
+const generateAnswer = async (resume: string, jobDescription: string) => {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      resume,
+      jobDescription,
+    }),
+  });
+
+  if (!response.ok) {
+    throw new Error("Network response was not ok");
+  }
+  return response.json();
+};
+
 export default function Home() {
   const [resumeInput, setResumeInput] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [storedResume, setStoredResume] = useLocalStorage("resume", "");
 
-  const submit = async (resume: string) => {
-    setStoredResume(resume);
-    window.alert(`Submitted: ${resume}`);
-    window.alert(`Submitted: ${jobDescription}`);
-  };
+  // const submit = async (resume: string) => {
+  //   setStoredResume(resume);
+  //   window.alert(`Submitted: ${resume}`);
+  //   window.alert(`Submitted: ${jobDescription}`);
+  // };
+
+  const mutation = useMutation({
+    mutationFn: () => generateAnswer(resumeInput, jobDescription),
+  });
+  console.log("mutation: ", mutation.data);
 
   // sync the resume in local storage with the resume input state
   useEffect(() => {
@@ -33,11 +58,6 @@ export default function Home() {
           onChange={(e) => {
             setResumeInput(e.target.value);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              submit(resumeInput);
-            }
-          }}
         />
         <label className="label">
           <span className="label-text">Your job description</span>
@@ -50,13 +70,19 @@ export default function Home() {
           onChange={(e) => {
             setJobDescription(e.target.value);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              submit(resumeInput);
-            }
-          }}
         />
-        <button className="btn-primary btn mt-4">Generate</button>
+        <button
+          className="btn-primary btn mt-4"
+          onClick={() => {
+            setStoredResume(resumeInput);
+            mutation.mutate();
+          }}
+        >
+          {mutation.isLoading ? "Loading..." : "Generate"}
+        </button>
+      </div>
+      <div className="mt-8 whitespace-pre-line">
+        {mutation.data?.text && mutation.data?.text}
       </div>
     </div>
   );

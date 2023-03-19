@@ -82,7 +82,7 @@ export default function Home() {
         </button>
       </div>
       <div className="mt-8 whitespace-pre-line">
-        {mutation.data?.text && mutation.data?.text}
+        {/* {mutation.data?.text && mutation.data?.text} */}
       </div>
     </div>
   );

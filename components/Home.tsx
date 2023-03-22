@@ -1,41 +1,13 @@
+import useChatMutation from "hooks/queries/useChatMutation";
 import useLocalStorage from "hooks/useLocalStorage";
 import { useEffect, useState } from "react";
-
-import { useMutation } from "@tanstack/react-query";
-
-const generateAnswer = async (resume: string, jobDescription: string) => {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      resume,
-      jobDescription,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error("Network response was not ok");
-  }
-  return response.json();
-};
 
 export default function Home() {
   const [resumeInput, setResumeInput] = useState("");
   const [jobDescription, setJobDescription] = useState("");
   const [storedResume, setStoredResume] = useLocalStorage("resume", "");
 
-  // const submit = async (resume: string) => {
-  //   setStoredResume(resume);
-  //   window.alert(`Submitted: ${resume}`);
-  //   window.alert(`Submitted: ${jobDescription}`);
-  // };
-
-  const mutation = useMutation({
-    mutationFn: () => generateAnswer(resumeInput, jobDescription),
-  });
-  console.log("mutation: ", mutation.data);
+  const mutation = useChatMutation(resumeInput, jobDescription);
 
   // sync the resume in local storage with the resume input state
   useEffect(() => {
@@ -82,7 +54,7 @@ export default function Home() {
         </button>
       </div>
       <div className="mt-8 whitespace-pre-line">
-        {mutation.data?.text && mutation.data?.text}
+        {mutation.data ? mutation.data : null}
       </div>
     </div>
   );

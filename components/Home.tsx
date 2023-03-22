@@ -1,48 +1,6 @@
+import useChatMutation from "hooks/queries/useChatMutation";
 import useLocalStorage from "hooks/useLocalStorage";
 import { useEffect, useState } from "react";
-
-import { useMutation } from "@tanstack/react-query";
-
-const generateAnswer = async (resume: string, jobDescription: string) => {
-  const response = await fetch("/api/chat", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      resume,
-      jobDescription,
-    }),
-  });
-
-  if (!response.ok || !response.body) {
-    throw new Error("Network response was not ok");
-  }
-
-  return response.body;
-};
-
-const useChatMutation = (resumeInput: string, jobDescription: string) => {
-  const [answer, setAnswer] = useState("");
-  const mutation = useMutation({
-    mutationFn: async () => {
-      setAnswer("");
-      const stream = await generateAnswer(resumeInput, jobDescription);
-      const reader = stream.getReader();
-      const decoder = new TextDecoder();
-
-      let done = false;
-      while (!done) {
-        const { value, done: doneReading } = await reader.read();
-        done = doneReading;
-        const chunkValue = decoder.decode(value);
-        setAnswer((prev) => prev + chunkValue);
-      }
-    },
-  });
-
-  return { ...mutation, data: answer };
-};
 
 export default function Home() {
   const [resumeInput, setResumeInput] = useState("");

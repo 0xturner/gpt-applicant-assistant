@@ -1,8 +1,8 @@
 import { z } from "zod";
 
 export const chatRequest = z.object({
-  resume: z.string(), // todo add char min max
-  jobDescription: z.string(), // todo add min max
+  resume: z.string().trim().min(10).max(500),
+  jobDescription: z.string().trim().min(10).max(500),
 });
 
 export type ChatRequest = z.infer<typeof chatRequest>;

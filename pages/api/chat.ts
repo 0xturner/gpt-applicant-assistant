@@ -1,5 +1,5 @@
 import { ipRateLimit } from "@lib/ip-rate-limit";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
 import { mockStream } from "utils/mockStream";
 import { moderateOpenAIText, tokenizeMessages } from "utils/openAI";
@@ -9,6 +9,7 @@ import {
   OpenAIStreamPayload,
 } from "utils/OpenAIStream";
 import { ChatRequest, chatRequest } from "parsers/chat";
+import { formatZodError } from "parsers/utilities";
 
 const LIVE_API = false;
 const INPUT_TOKEN_LIMIT = 800; // TODO add to env
@@ -19,7 +20,7 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 export const config = {
-  runtime: "edge", // TODO should we even be using edge? Might need to to support streaming
+  runtime: "edge", // needs to be edge to support response streaming
 };
 
 // TODO
@@ -29,32 +30,32 @@ export const config = {
 // check parse failure error
 // create parsing/validation middleware
 
-const handler = async (req: Request): Promise<Response> => {
-  let body;
-  try {
-    body = chatRequest.parse(await req.json());
-  } catch (err) {
+const handler = async (req: NextRequest): Promise<Response> => {
+  const parsed = chatRequest.safeParse(req.body);
+  if (!parsed.success) {
     return new NextResponse(null, {
-      status: 400,
-      statusText: "invalid request body type",
+      status: 422,
+      statusText: formatZodError(parsed.error),
     });
   }
 
-  const messages = getMessages(body);
+  const data = parsed.data;
+
+  const messages = getMessages(data);
   const tokens = tokenizeMessages(messages);
 
   if (tokens.length > INPUT_TOKEN_LIMIT) {
     return new NextResponse(null, {
-      status: 400,
+      status: 422,
       statusText: "exceeds token limit",
     });
   }
 
   try {
-    await moderateOpenAIText(body.resume + " " + body.jobDescription);
+    await moderateOpenAIText(data.resume + " " + data.jobDescription);
   } catch (e) {
     return new NextResponse(null, {
-      status: 400,
+      status: 422,
       statusText: "flagged content",
     });
   }

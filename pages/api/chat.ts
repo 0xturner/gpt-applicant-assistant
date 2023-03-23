@@ -11,9 +11,6 @@ import {
 import { ChatRequest, chatRequest } from "parsers/chat";
 import { formatZodError } from "parsers/utilities";
 
-const LIVE_API = false;
-const INPUT_TOKEN_LIMIT = 800; // TODO add to env
-
 // break the app if the API key is missing
 if (!process.env.OPENAI_API_KEY) {
   throw new Error("Missing Environment Variable OPENAI_API_KEY");
@@ -23,15 +20,11 @@ export const config = {
   runtime: "edge", // needs to be edge to support response streaming
 };
 
-// TODO
-// jest test (or vitest??)
-// mock ipRateLimit
-// mock create moderation (MSW??)
-// check parse failure error
-// create parsing/validation middleware
-
+/**
+Handler function that processes a chat request by verifying the content and token limit, moderating the text, and generating a response using OpenAI's GPT-3.5 model.
+*/
 const handler = async (req: NextRequest): Promise<Response> => {
-  const parsed = chatRequest.safeParse(req.body);
+  const parsed = chatRequest.safeParse(await req.json());
   if (!parsed.success) {
     return new NextResponse(null, {
       status: 422,
@@ -40,11 +33,10 @@ const handler = async (req: NextRequest): Promise<Response> => {
   }
 
   const data = parsed.data;
-
   const messages = getMessages(data);
   const tokens = tokenizeMessages(messages);
 
-  if (tokens.length > INPUT_TOKEN_LIMIT) {
+  if (tokens.length > (process.env.AI_MAX_REQUEST_TOKENS || 100)) {
     return new NextResponse(null, {
       status: 422,
       statusText: "exceeds token limit",
@@ -65,9 +57,10 @@ const handler = async (req: NextRequest): Promise<Response> => {
   // If the status is not 200 then it has been rate limited.
   if (resp.status !== 200) return resp;
 
-  const stream = LIVE_API
-    ? await OpenAIStream(getOpenAIPayload(messages))
-    : await mockStream();
+  const stream =
+    process.env.AI_LIVE === "true"
+      ? await OpenAIStream(getOpenAIPayload(messages))
+      : await mockStream();
 
   return new NextResponse(stream);
 };
@@ -86,9 +79,9 @@ const getMessages = (body: ChatRequest): ChatGPTMessage[] => [
 const getOpenAIPayload = (messages: ChatGPTMessage[]): OpenAIStreamPayload => ({
   model: "gpt-3.5-turbo",
   messages,
-  temperature: process.env.AI_TEMP ? parseFloat(process.env.AI_TEMP) : 0.2,
-  max_tokens: process.env.AI_MAX_TOKENS
-    ? parseInt(process.env.AI_MAX_TOKENS)
+  temperature: process.env.AI_TEMP ? parseFloat(process.env.AI_TEMP) : 0.1,
+  max_tokens: process.env.AI_MAX_RESPONSE_TOKENS
+    ? parseInt(process.env.AI_MAX_RESPONSE_TOKENS)
     : 100,
   top_p: 1,
   frequency_penalty: 0,

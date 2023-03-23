@@ -1,27 +1,17 @@
 import { ipRateLimit } from "@lib/ip-rate-limit";
 import { NextResponse } from "next/server";
 
-import { z } from "zod";
-
 import { mockStream } from "utils/mockStream";
-import { tokenizeMessages } from "utils/openAI";
+import { moderateOpenAIText, tokenizeMessages } from "utils/openAI";
 import {
   ChatGPTMessage,
   OpenAIStream,
   OpenAIStreamPayload,
 } from "utils/OpenAIStream";
-import { Configuration, OpenAIApi } from "openai";
-import fetchAdapter from "@vespaiach/axios-fetch-adapter";
+import { ChatRequest, chatRequest } from "parsers/chat";
 
 const LIVE_API = false;
-const INPUT_TOKEN_LIMIT = 800;
-
-const schema = z.object({
-  resume: z.string(), // todo add char limit
-  jobDescription: z.string(), // todo add char limit
-});
-
-type Body = z.infer<typeof schema>;
+const INPUT_TOKEN_LIMIT = 800; // TODO add to env
 
 // break the app if the API key is missing
 if (!process.env.OPENAI_API_KEY) {
@@ -29,48 +19,43 @@ if (!process.env.OPENAI_API_KEY) {
 }
 
 export const config = {
-  runtime: "edge", // TODO should we even be using edge?
+  runtime: "edge", // TODO should we even be using edge? Might need to to support streaming
 };
-
-const openai = new OpenAIApi(
-  new Configuration({
-    apiKey: process.env.OPENAI_API_KEY,
-  })
-);
 
 // TODO
 // jest test (or vitest??)
 // mock ipRateLimit
 // mock create moderation (MSW??)
-// organize
+// check parse failure error
+// create parsing/validation middleware
 
-const handler = async (req: Request, res: Response): Promise<Response> => {
-  const body = schema.parse(await req.json()); // todo test response if parse fails
+const handler = async (req: Request): Promise<Response> => {
+  let body;
+  try {
+    body = chatRequest.parse(await req.json());
+  } catch (err) {
+    return new NextResponse(null, {
+      status: 400,
+      statusText: "invalid request body type",
+    });
+  }
 
   const messages = getMessages(body);
   const tokens = tokenizeMessages(messages);
-
-  // Moderate the content to comply with OpenAI T&C
-  const moderationRes = await openai.createModeration(
-    {
-      input: body.resume + " " + body.jobDescription,
-    },
-    {
-      adapter: fetchAdapter,
-    }
-  );
-
-  if (moderationRes.data.results[0].flagged) {
-    return new NextResponse(null, {
-      status: 400,
-      statusText: "flagged content",
-    });
-  }
 
   if (tokens.length > INPUT_TOKEN_LIMIT) {
     return new NextResponse(null, {
       status: 400,
       statusText: "exceeds token limit",
+    });
+  }
+
+  try {
+    await moderateOpenAIText(body.resume + " " + body.jobDescription);
+  } catch (e) {
+    return new NextResponse(null, {
+      status: 400,
+      statusText: "flagged content",
     });
   }
 
@@ -86,7 +71,7 @@ const handler = async (req: Request, res: Response): Promise<Response> => {
   return new NextResponse(stream);
 };
 
-const getMessages = (body: Body): ChatGPTMessage[] => [
+const getMessages = (body: ChatRequest): ChatGPTMessage[] => [
   {
     role: "system",
     content: "You are a helpful assistant that helps job applicants.",

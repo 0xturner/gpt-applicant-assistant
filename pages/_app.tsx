@@ -6,6 +6,7 @@ import { SessionContextProvider } from "@supabase/auth-helpers-react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
 import "../styles/global.css";
+import { ChakraProvider } from "@chakra-ui/react";
 
 const queryClient = new QueryClient();
 
@@ -13,7 +14,7 @@ function App({ Component, pageProps }: AppProps) {
   const [supabase] = useState(() => createBrowserSupabaseClient());
 
   return (
-    <div data-theme="light">
+    <ChakraProvider>
       <QueryClientProvider client={queryClient}>
         <SessionContextProvider
           supabaseClient={supabase}
@@ -23,7 +24,7 @@ function App({ Component, pageProps }: AppProps) {
           <Analytics />
         </SessionContextProvider>
       </QueryClientProvider>
-    </div>
+    </ChakraProvider>
   );
 }
 
